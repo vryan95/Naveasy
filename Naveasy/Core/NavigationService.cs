@@ -51,11 +51,10 @@ public class NavigationService : INavigationService
             CurrentNavigationSource = NavigationSource.NavigationService;
             if(keepPageInCache == true)
             {
+                _cachedPage = navigation.NavigationStack.LastOrDefault();
+                navigation.RemovePage(_cachedPage);
+                MvvmHelpers.OnNavigatedFrom(_cachedPage, parameters);
                 var previousPage = navigation.NavigationStack.LastOrDefault();
-                _cachedPage = previousPage;
-                navigation.RemovePage(previousPage);
-                MvvmHelpers.OnNavigatedFrom(previousPage, parameters);
-                previousPage = navigation.NavigationStack.LastOrDefault();
                 MvvmHelpers.OnNavigatedTo(previousPage, parameters);
 
                 return new NavigationResult(true);
