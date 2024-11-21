@@ -26,6 +26,6 @@ public class PageBViewModel : ViewModelBase
 
     private void Back()
     {
-        _navigationService.GoBackAsync();
+        _navigationService.GoBackAsync(keepPageInCache: true);
     }
 }

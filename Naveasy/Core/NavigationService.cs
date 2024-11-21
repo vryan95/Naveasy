@@ -16,6 +16,8 @@ public class NavigationService : INavigationService
     private readonly IPageFactory _pageFactory;
     private readonly IEnumerable<IPageNavigationProcessor> _pageNavigationProcessors;
 
+    private Page _cachedPage;
+
     public NavigationService(IApplicationProvider applicationProvider, IPageFactory pageFactory, IEnumerable<IPageNavigationProcessor> pageNavigationProcessors)
     {
         _applicationProvider = applicationProvider;
@@ -24,7 +26,7 @@ public class NavigationService : INavigationService
     }
 
     internal NavigationSource CurrentNavigationSource { get; private set; } = NavigationSource.System;
-    public async Task<INavigationResult> GoBackAsync(INavigationParameters parameters = null, bool? animated = null)
+    public async Task<INavigationResult> GoBackAsync(INavigationParameters parameters = null, bool? animated = null, bool? keepPageInCache = false)
     {
         Page page = null;
 
@@ -47,17 +49,30 @@ public class NavigationService : INavigationService
                 .Add(KnownInternalParameters.NavigationMode, NavigationMode.Back);
 
             CurrentNavigationSource = NavigationSource.NavigationService;
-            var poppedPage = await DoPop(navigation, animated ?? true);
-            var previousPage = navigation.NavigationStack.LastOrDefault();
-
-            if (poppedPage != null)
+            if(keepPageInCache == true)
             {
-                MvvmHelpers.OnNavigatedFrom(poppedPage, parameters);
+                var previousPage = navigation.NavigationStack.LastOrDefault();
+                _cachedPage = previousPage;
+                navigation.RemovePage(previousPage);
+                MvvmHelpers.OnNavigatedFrom(previousPage, parameters);
+                previousPage = navigation.NavigationStack.LastOrDefault();
                 MvvmHelpers.OnNavigatedTo(previousPage, parameters);
-                MvvmHelpers.DestroyPage(poppedPage);
 
                 return new NavigationResult(true);
             }
+            else
+            {
+                var poppedPage = await DoPop(navigation, animated ?? true);
+                var previousPage = navigation.NavigationStack.LastOrDefault();
+                if (poppedPage != null)
+                {
+                    MvvmHelpers.OnNavigatedFrom(poppedPage, parameters);
+                    MvvmHelpers.OnNavigatedTo(previousPage, parameters);
+                    MvvmHelpers.DestroyPage(poppedPage);
+
+                    return new NavigationResult(true);
+                }
+            }            
         }
         catch (Exception ex)
         {
@@ -133,9 +148,23 @@ public class NavigationService : INavigationService
     {
         CurrentNavigationSource = NavigationSource.NavigationService;
 
-        var result = await _pageNavigationProcessors.Single(x => x.CanHandle<TViewModel>())
+        var page = _pageNavigationProcessors.Single(x => x.CanHandle<TViewModel>());
+
+
+        INavigationResult result;
+        if(_cachedPage is not null && _cachedPage.BindingContext is TViewModel)
+        {
+            var navigation = _applicationProvider.Navigation;
+            await navigation.PushAsync(_cachedPage, animated.HasValue && animated.Value);
+            result = new NavigationResult(true);
+        }
+        else
+        {
+            result = await _pageNavigationProcessors.Single(x => x.CanHandle<TViewModel>())
                                                     .NavigateAsync<TViewModel>(parameters, animated);
-        
+        }
+        _cachedPage = null;
+
         CurrentNavigationSource = NavigationSource.System;
         return result;
     }
