@@ -6,4 +6,13 @@ namespace Naveasy.Samples;
 [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
+    public override void OnBackPressed()
+    {
+        var serviceProvider = IPlatformApplication.Current!.Services;
+        if (serviceProvider is null)
+            return;
+
+        var navigation = serviceProvider.GetRequiredService<INavigationService>();
+        navigation.GoBackAsync();
+    }
 }

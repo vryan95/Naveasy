@@ -19,28 +19,6 @@ public class NavigatorFrameworkAppBuilder
         RegisterServices();
         
         _mauiAppBuilder.ConfigureContainer(new DefaultServiceProviderFactory());
-		
-        _mauiAppBuilder.ConfigureLifecycleEvents(lifecycle =>
-        {
-#if ANDROID
-            lifecycle.AddAndroid(android =>
-            {
-                android.OnBackPressed(_ =>
-                {
-#pragma warning disable CS0618 // Type or member is obsolete
-                    var serviceProvider = MauiApplication.Current!.Services;
-#pragma warning restore CS0618 // Type or member is obsolete
-                    if(serviceProvider is null)
-                        return true;
-
-                    var navigation = serviceProvider.GetRequiredService<INavigationService>();
-                    navigation.GoBackAsync();
-
-                    return false;
-                });
-            });
-#endif
-        });
     }
 
     private void RegisterServices()
